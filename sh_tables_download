@@ -1,0 +1,85 @@
+#!/bin/bash
+year=$1;doy=$2;year_2=${year:2};#脚本输入参数为下载年份和年积日
+user="anonymous";userpasswd="jason%40ucsd.edu";host="garner.ucsd.edu/pub/gamit/tables";
+
+
+if [ -e ./antmod.dat ]
+then rm ./antmod.dat
+fi
+wget http://${user}:${userpasswd}@${host}/antmod.dat 
+
+if [ -e ./dcb.dat ]
+then rm ./dcb.dat
+fi
+wget http://${user}:${userpasswd}@${host}/dcb.dat 
+
+if [ -e ./hi.dat ]
+then rm ./hi.dat
+fi
+wget http://${user}:${userpasswd}@${host}/hi.dat 
+
+if [ -e ./leap.sec ]
+then rm ./leap.sec
+fi
+wget http://${user}:${userpasswd}@${host}/leap.sec
+
+if [ -e ./luntab. ]
+then rm ./luntab.
+fi
+wget http://${user}:${userpasswd}@${host}/luntab.${year}.J2000 -O luntab. 
+
+if [ -e ./nutabl. ]
+then rm ./nutabl.
+fi
+wget http://${user}:${userpasswd}@${host}/nutabl.${year} -O nutabl. 
+
+if [ -e ./pole. ]
+then rm ./pole.
+fi
+wget http://${user}:${userpasswd}@${host}/pole.usno -O pole. 
+
+if [ -e ./rcvant.dat ]
+then rm ./rcvant.dat
+fi
+wget http://${user}:${userpasswd}@${host}/rcvant.dat
+
+if [ -e ./soltab. ]
+then rm ./soltab.
+fi
+wget http://${user}:${userpasswd}@${host}/soltab.${year}.J2000 -O soltab.
+
+if [ -e ./svnav.dat ]
+then rm ./svnav.dat
+fi
+wget http://${user}:${userpasswd}@${host}/svnav.dat 
+
+if [ -e ./ut1. ]
+then rm ./ut1.
+fi
+wget http://${user}:${userpasswd}@${host}/ut1.usno -O ut1. 
+
+if [ -e ./svs_exclude.dat]
+then rm ./svs_exclude.dat
+fi
+wget http://${user}:${userpasswd}@garner.ucsd.edu/pub/gamit/setup/svs_exclude.dat
+
+cgpsweek () #函数参数依次为下载年份 年积日
+{
+    ttlday=360 
+    for((yr=1981;yr<$1;yr++))
+        do
+           let ttlday+=365
+           if [[ $(($yr%4)) == 0 && $(($yr%100))  != 0 || $(($yr%400)) == 0 ]] #考虑闰年 四年、四百年一润 百年不润
+           then let ttlday+=1
+           fi
+        done
+    let ttlday+=(10#$2);let weekno=ttlday/7
+    let dayofw=ttlday-7*weekno;gpsweekday=${weekno}${dayofw}       
+}
+
+cgpsweek ${year} ${doy}
+wget http://${user}:${userpasswd}@garner.ucsd.edu/pub/products/${weekno}/igs${gpsweekday}.sp3.Z
+uncompress igs${gpsweekday}.sp3.Z
+
+wget ftp://cddis.gsfc.nasa.gov/pub/gps/data/daily/${year}/brdc/brdc${doy}0.${year_2}n.Z
+uncompress brdc${doy}0.${year_2}n.Z
