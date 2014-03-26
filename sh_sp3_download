@@ -1,0 +1,25 @@
+#!/bin/bash
+yr_4=$1;yr_2=${yr_4:2:3};doyf=$2;doyl=$3; #脚本输入参数依次为下载年份、起始日期、结束日期
+user="anonymous";userpasswd="jason%40ucsd.edu";host="garner.ucsd.edu/pub/products";
+cgpsweek () #函数参数依次为下载年份 年积日
+{
+	ttlday=360 
+	for((yr=1981;yr<$1;yr++))
+	do
+	let ttlday+=365
+	if [[ $(($yr%4)) == 0 && $(($yr%100)) != 0 || $(($yr%400)) == 0 ]] #考虑闰年 四年、四百年一润 百年不润
+	then let ttlday+=1
+	fi
+	done
+	let ttlday+=(10#$2);let weekno=ttlday/7
+	let dayofw=ttlday-7*weekno;gpsweekday=${weekno}${dayofw} 
+}
+
+for doy in $(seq -w ${doyf} ${doyl})
+  do 
+    cgpsweek ${yr_4} ${doy} 
+    wget http://${user}:${userpasswd}@${host}/${weekno}/igs${gpsweekday}.sp3.Z #下载精密星历压缩文件
+    uncompress igs${gpsweekday}.sp3.Z #解压缩文件
+    wget ftp://cddis.gsfc.nasa.gov/pub/gps/data/daily/${yr_4}/brdc/brdc${doy}0.${yr_2}n.Z #下载广播星历文件
+    uncompress brdc${doy}0.${yr_2}n.Z #解压缩文件
+  done
