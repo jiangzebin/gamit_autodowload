@@ -1,0 +1,26 @@
+#! /bin/bash
+yr_4=$1;
+cgpsweek () #$1为年份，$2为DOY，如2013 323
+  {
+      ttlday=360
+      for((yr=1981;yr<$1;yr++))
+          do
+             let ttlday+=365
+             if [[ $(($yr%4)) == 0 && $(($yr%100))  != 0 || $(($yr%400)) == 0 ]] #考虑闰年 四年、四>    百年一润 百年不润
+             then let ttlday+=1
+             fi
+          done
+      let ttlday+=(10#$2);let weekno=ttlday/7
+      let dayofw=ttlday-7*weekno;gpsweekday=${weekno}${dayofw}
+  }
+ for doy in $(seq 1 365) 
+do 
+  cgpsweek $yr_4 $doy
+  echo "ftp://cddis.gsfc.nasa.gov/pub/gps/products/${weekno}/igs${gpsweekday}.clk.Z" >> /home/jiang/clk
+echo "ftp://cddis.gsfc.nasa.gov/pub/gps/products/${weekno}/igs${gpsweekday}.sp3.Z" >> /home/jiang/sp3
+if [ "$dayofw" == "2" ]; then
+ echo "ftp://cddis.gsfc.nasa.gov/pub/gps/products/${weekno}/igs${weekno}7.erp.Z" >> /home/jiang/erp
+fi
+echo "ftp://ftp.unibe.ch/aiub/CODE/2013/COD${gpsweekday}.ION.Z" >> /home/jiang/ion
+done
+
