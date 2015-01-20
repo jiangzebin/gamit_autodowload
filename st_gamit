@@ -1,0 +1,88 @@
+#!/bin/bash
+#此脚本解算每天的基线，并提取ZPD
+yr_4=$1;doy=$2;yr_2=${yr_4:2};yr_1=${yr_4:3}
+user="anonymous";userpasswd="jason%40ucsd.edu";host="garner.ucsd.edu/pub/gamit/tables";
+cgpsweek () #$1为年份，$2为DOY，如2013 323
+{
+    ttlday=360 
+    for((yr=1981;yr<$1;yr++))
+        do
+           let ttlday+=365
+           if [[ $(($yr%4)) == 0 && $(($yr%100))  != 0 || $(($yr%400)) == 0 ]] #考虑闰年 四年、四百年一润 百年不润
+           then let ttlday+=1
+           fi
+        done
+    let ttlday+=(10#$2);let weekno=ttlday/7
+    let dayofw=ttlday-7*weekno;gpsweekday=${weekno}${dayofw}       
+}
+cgpsweek ${yr_4} ${doy}
+
+#下载精密星历、广播星历、参与解算的IGS的O文件
+wget http://${user}:${userpasswd}@garner.ucsd.edu/pub/products/${weekno}/igs${gpsweekday}.sp3.Z
+uncompress igs${gpsweekday}.sp3.Z
+wget ftp://cddis.gsfc.nasa.gov/pub/gps/data/daily/${yr_4}/brdc/brdc${doy}0.${yr_2}n.Z
+uncompress brdc${doy}0.${yr_2}n.Z
+
+#链接各类表文件和测站信息文件
+ln -s /home/jiang/不常更新表/antmod.dat ./antmod.dat
+ln -s /home/jiang/不常更新表/dcb.dat ./dcb.dat
+ln -s /home/jiang/不常更新表/hi.dat ./hi.dat
+ln -s /home/jiang/不常更新表/leap.sec ./leap.sec
+ln -s /home/jiang/不常更新表/luntab.${yr_4}.J2000 ./luntab.
+ln -s /home/jiang/不常更新表/nutabl.${yr_4} ./nutabl.
+ln -s /home/jiang/不常更新表/pole. ./pole.
+ln -s /home/jiang/不常更新表/rcvant.dat ./rcvant.dat
+ln -s /home/jiang/不常更新表/soltab.${yr_4}.J2000 ./soltab.
+ln -s /home/jiang/不常更新表/svnav.dat ./svnav.dat
+ln -s /home/jiang/不常更新表/ut1. ./ut1.
+ln -s /home/jiang/不常更新表/svs_exclude.dat ./svs_exclude.dat
+ln -s /home/jiang/不常更新表/autcln.cmd ./autcln.cmd
+ln -s /home/jiang/不常更新表/gdetic.dat ./gdetic.dat
+ln -s /home/jiang/不常更新表/guess_rcvant.dat ./guess_rcvant.dat
+ln -s /home/jiang/不常更新表/otlcmc.dat ./otlcmc.dat
+
+if [ -e ./sittbl. ] 
+then rm ./sittbl.
+fi
+cp ~/不常更新表/sittbl. ./sittbl.
+
+if [ -e ./sestbl. ] 
+then rm ./sestbl.
+fi
+cp ~/不常更新表/sestbl. ./sestbl.
+
+if [ -e ./station.info ] 
+then rm ./station.info
+fi
+cp ~/不常更新表/station.info ./station.info
+
+#基线解算
+sh_upd_stnfo -files *.${yr_2}o -ref station.info
+grep POSITION *.${yr_2}o > lfile.rnx
+rx2apr lfile.rnx ${yr_4} ${doy}
+gapr_to_l lfile.rnx.apr lfile. "" ${yr_4} ${doy}
+sh_makexp -expt test -orbt igsf -yr ${yr_4} -doy ${doy} -sess 99 -nav brdc${doy}0.${yr_2}n -apr lfile. -sinfo 30 00 00 2880
+sh_sp3fit -f igs${gpsweekday}.sp3 -o igsf -d ${yr_4} ${doy}
+sh_check_sess -sess ${doy} -type gfile -file gigsf${yr_1}.${doy}
+makej brdc${doy}0.${yr_2}n jbrdc${yr_1}.${doy}
+sh_check_sess -sess ${doy} -type jfile -file jbrdc${yr_1}.${doy}
+makex test.makex.batch
+fixdrv dtest${yr_1}.${doy}
+csh btest${yr_1}.bat
+grep 'ATM_ZEN X' otesta.${doy} > zpd_solution_sum.${doy}
+grep 'ATM_ZEN X JSQD' otesta.${doy} > zpd_solution_jsqd.${doy}
+grep 'ATM_ZEN X CMMZ' otesta.${doy} > zpd_solution_cmmz.${doy}
+grep 'ATM_ZEN X SHJD' otesta.${doy} > zpd_solution_shjd.${doy}
+grep 'ATM_ZEN X SHBS' otesta.${doy} > zpd_solution_shbs.${doy}
+grep 'ATM_ZEN X SHCH' otesta.${doy} > zpd_solution_shch.${doy}
+grep 'ATM_ZEN X SSJG' otesta.${doy} > zpd_solution_ssjg.${doy}
+grep 'ATM_ZEN X SHXZ' otesta.${doy} > zpd_solution_shxz.${doy}
+grep 'ATM_ZEN X SHQP' otesta.${doy} > zpd_solution_shqp.${doy}
+grep 'ATM_ZEN X LGXC' otesta.${doy} > zpd_solution_lgxc.${doy}
+grep 'ATM_ZEN X SHJS' otesta.${doy} > zpd_solution_shjs.${doy}
+
+if [ ! -e ./GAMIT.fatal ];then 
+ mkdir result
+ mv *.${yr_2}o otest* qtest* zpd_solution* ./result
+ rm *
+fi
